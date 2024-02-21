@@ -1,6 +1,7 @@
 # AI Project for CCTV Home Security
 
 ![HomeSecurity](./Home_Security.png)
+<img src="./Home_Security.png" alt="HomeSecurity" width="50%" height="50%">
 
 ## Brief
 My family and grandparents homes both use the same CCTV system, which can be programmed to take photos when it detects movement within predefined zones. The key pain point here is that cats, trees and light variations cause many images to be taken. These trigger the system to send false positive intrusion email notifications to recipients.
