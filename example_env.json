@@ -1,0 +1,25 @@
+{
+    "TOKENS": {
+        "BOT_TOKEN": "telegram_bot_token_id",
+        "USER_JOHN": "johnuserid",
+        "USER_SIMON": "simonuserid",
+        "USER_RICHARD": "richarduserid",
+        "USER_ANN": "annuserid"
+    },
+    "PATHS": {
+        "DENNING": "household1",
+        "RECTORY": "household2"
+    },
+    "URLS": {
+        "SEND_MSG_URL": "https://api.telegram.org/bot{TOKEN}/sendMessage",
+        "SEND_PHOTO_URL": "https://api.telegram.org/bot{TOKEN}/sendPhoto"
+    },
+    "EMAIL": {
+        "USER": "imagedestinationemailaddr",
+        "PASSWORD": "passwd",
+        "IMAP": "imap.gmail.com",
+        "RECTORY_SENDER": "household2_sender",
+        "DENNING_SENDER": "household1_sender",
+        "SENDER_ADDRESS": "base_sender_address"
+    }
+}
