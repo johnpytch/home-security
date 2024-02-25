@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "home-security"
+version = "0.1.0"
+description = "An AI Application for CCTV intrusion detection"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10.0,<3.12"
+tensorflow = "2.11.1"
+tensorflow-io-gcs-filesystem = "0.31.0"
+tensorflow-estimator = "2.11.0"
+tensorboard = "2.11"
+protobuf = "3.19.5"
+pillow = "9.2.0"
+numpy = "^1.26.4"
+matplotlib = "^3.8.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
