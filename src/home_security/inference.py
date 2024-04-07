@@ -1,55 +1,31 @@
-import tensorflow as tf
-from object_detection.utils import visualization_utils as viz_utils
-import numpy as np
+import torch
 
 
-def inference(model, category_index, image_np, min_score):
-    input_tensor = tf.convert_to_tensor(image_np)
-    input_tensor = input_tensor[tf.newaxis, ...]
-    detections = model(input_tensor)
+def inference(model, processor, image, min_score):
 
-    num_detections = int(detections.pop("num_detections"))
-    detections = {
-        key: value[0, :num_detections].numpy() for key, value in detections.items()
-    }
-    detections["num_detections"] = num_detections
-    detections["detection_classes"] = detections["detection_classes"].astype(np.int64)
+    inputs = processor(images=image, return_tensors="pt")
+    outputs = model(**inputs)
 
-    # remove unwanted detections
-    detection_classes = []
-    detection_boxes = []
-    detection_scores = []
-    det = []
-    detection = {}
-    for i in range(0, len(detections["detection_classes"])):
-        if category_index.get(detections["detection_classes"][i]) != None:
-            detection_classes.append(detections["detection_classes"][i])
-            detection_boxes.append(detections["detection_boxes"][i])
-            detection_scores.append(detections["detection_scores"][i])
-    detection["detection_classes"] = np.array(detection_classes)
-    detection["detection_scores"] = np.array(detection_scores)
-    detection["detection_boxes"] = np.array(detection_boxes)
-    detection["num_detections"] = np.array(len(detection_classes))
+    # convert outputs (bounding boxes and class logits) to COCO API
+    # let's only keep detections with score > 0.9
+    target_sizes = torch.tensor([image.size[::-1]])
+    results = processor.post_process_object_detection(
+        outputs, target_sizes=target_sizes, threshold=min_score
+    )[0]
 
-    image_np_with_detections = image_np.copy()
-    viz_utils.visualize_boxes_and_labels_on_image_array(
-        image_np_with_detections,
-        detection["detection_boxes"],
-        detection["detection_classes"],
-        detection["detection_scores"],
-        category_index,
-        use_normalized_coordinates=True,
-        max_boxes_to_draw=100,
-        min_score_thresh=min_score,
-        agnostic_mode=False,
-        line_thickness=1,
-    )
-    for i in range(len(detection["detection_classes"])):
-        if detection["detection_scores"][i] > min_score:
-            print(
-                "Detected {}".format(
-                    category_index.get(detection["detection_classes"][i])["name"]
-                )
+    detections = []
+    for score, label, box in zip(
+        results["scores"], results["labels"], results["boxes"]
+    ):
+        box = [round(i, 2) for i in box.tolist()]
+        lab = model.config.id2label[label.item()]
+        if lab in ["person", "dog"]:
+            detections.append(
+                {
+                    "label": lab,
+                    "score": round(score.item(), 2),
+                    "box": box,
+                }
             )
-            det.append(category_index.get(detection["detection_classes"][i])["name"])
-    return (image_np_with_detections, det)
+            print(f"Detected {lab} with confidence " f"{round(score.item(), 2)}")
+    return detections
