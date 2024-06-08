@@ -1,0 +1,13 @@
+version: '3.3'
+
+services:
+  home-security:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: home-security
+    working_dir: /homesecurity
+    volumes:
+      - ./images:/homesecurity/images
+    command: bash ./start.sh
