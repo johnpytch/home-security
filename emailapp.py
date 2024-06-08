@@ -4,21 +4,24 @@ import os
 import time
 import json
 from datetime import datetime
+import logging
 
 # Get env json variables
 with open("./env.json", "r") as file:
     env_file = json.load(file)
 env_email = env_file.get("EMAIL")
-env_households = env_file.get('HOUSEHOLDS')
+env_households = env_file.get("HOUSEHOLDS")
 
-DENN = env_households.get('DENN')
-REC = env_households.get('REC')
+DENN = env_households.get("DENN")
+REC = env_households.get("REC")
+
 user = env_email.get("USER")
 password = env_email.get("PASSWORD")
 imap_url = env_email.get("IMAP")
 REC_SENDER = env_email.get("REC_SENDER")
 DENN_SENDER = env_email.get("DENN_SENDER")
 SENDER_ADDRESS = env_email.get("SENDER_ADDRESS")
+
 rec_sender = f'"{REC_SENDER}" {SENDER_ADDRESS}'
 denn_sender = f'"{DENN_SENDER}" {SENDER_ADDRESS}'
 
@@ -70,7 +73,7 @@ while True:
                     if filename is not None:
 
                         savefilename = filename.split(".")[0] + "_" + date_time + ".jpg"
-                        path = f"../images/new_images/{household}/" + savefilename
+                        path = f"./images/new_images/{household}/" + savefilename
 
                         if not os.path.isfile(path):
                             # Save the image
@@ -79,10 +82,11 @@ while True:
 
                             print("Saved image " + savefilename)
             con.store(str(i), "+FLAGS", "\\Deleted")
-        print("Sleeping for 60s")
+        print("Sleeping for 30s")
         time.sleep(30)
-    except:
+    except Exception as e:
+        print(e)
         print("Assumed network connectivity lost... Retrying in 60s")
-        time.sleep(120)
+        time.sleep(60)
         con = conEmail()
         pass

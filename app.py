@@ -2,16 +2,25 @@ import os
 from os import listdir
 import sys
 from PIL import Image
+from typing import List
 import time
+import logging
+import json
+from collections import Counter
 from src.home_security.telegram import send_photo
-
-sys.path.append("..")
 from src.home_security.utils import get_datetime
 from src.home_security.inference import inference
-import json
+
 from src.home_security.model import load_model
 from src.home_security.annotations import annotate_detections
-from collections import Counter
+
+sys.path.append("..")
+# Configure the logging settings
+logging.basicConfig(
+    level=logging.INFO,  # Set the logging level to INFO
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 # Load env json
 with open("./env.json", "r") as file:
@@ -45,41 +54,45 @@ INFERENCED_IMAGES_REC = f"./images/inferenced/{REC}/"
 SEND_MSG_URL = env_urls.get("SEND_MSG_URL").format(TOKEN=BOT_TOKEN)
 SEND_PHOTO_URL = env_urls.get("SEND_PHOTO_URL").format(TOKEN=BOT_TOKEN)
 
+logging.info(f"Environment initialised for {DENN} and {REC}")
 
 # initialise model
 model, processor = load_model()
 
 
-def inference_images(image_paths, household: str):
+def inference_images(image_paths: List[str], household: str):
 
     # Specify who is receiving the image if there is a detection
     recipients = [
         USER_JOHN
     ]  # [USER_JOHN, USER_S] if household == DENN else [USER_JOHN, USER_A, USER_R]
     for image_path in image_paths:
-        datetime = get_datetime(image_path)
-        if (
-            int(image_path.split("/")[4].split("_")[1].split(".")[0][8:10]) >= 20
-            or int(int(image_path.split("/")[4].split("_")[1].split(".")[0][8:10])) <= 6
-        ):  # decide score thresh depending on time of day
-            min_det_score = 0.35  # nighttime
-        else:
-            min_det_score = 0.50  # daytime
-        image = Image.open(image_path)
+        datetime = get_datetime(image_path=image_path)
 
+        # Decide score thresh depending on hour of day
+        # TODO: Use proper datetime type
+        if int(datetime[0:2]) >= 20 or int(datetime[0:2]) <= 6:
+            min_det_score = 0.45
+        else:
+            min_det_score = 0.55
+
+        # Inference image
+        image = Image.open(image_path)
         start_time = time.time()
-        detections = inference(model, processor, image, min_score=min_det_score)
+        detections = inference(
+            model=model, processor=processor, image=image, min_score=min_det_score
+        )
         end_time = time.time()
 
         # Annotate image
-        annotated_image = annotate_detections(image, detections)
+        annotated_image = annotate_detections(image=image, detections=detections)
 
         # Save inferenced image in respective inferenced folder
         inferenced_img_path = (
             INFERENCED_IMAGES_DENN if household == DENN else INFERENCED_IMAGES_REC
         )
         inferenced_img_path += image_path.split("/")[4]
-        annotated_image.savefig(inferenced_img_path, bbox_inches="tight", pad_inches=0)
+        annotated_image.save(inferenced_img_path)
 
         # Save original image in respective old_images folder
         old_img_path = OLD_IMAGES_DENN if household == DENN else OLD_IMAGES_REC
@@ -87,16 +100,12 @@ def inference_images(image_paths, household: str):
         image.save(old_img_path)  # save old image to new location
         os.remove(image_path)  # remove image from new images dir
 
-        print(
-            "Inferenced {} using score thresh {} in {}".format(
-                image_path, min_det_score, str(end_time - start_time)
-            )
+        logging.info(
+            f"Inferenced image_path {image_path} using score thresh {min_det_score} in {end_time - start_time}"
         )
 
-        # do something with detection
-        if not detections:
-            continue
-        else:
+        # Do something with detection
+        if detections:
             message = "Detected "
 
             # Get dict of the counts of unique items in the images detections
@@ -106,30 +115,35 @@ def inference_images(image_paths, household: str):
                     unique_dets[det["label"]] = 1
                 else:
                     unique_dets[det["label"]] += 1
-            unique_dets
+
+            # Add detections to a message
             item_counts = dict(Counter(unique_dets))
             for key, value in item_counts.items():
-                message = message + "{} {}, ".format(value, key)
+                if value > 1:
+                    class_name = "people"
+                else:
+                    class_name = key
+                message = message + f"{value} {class_name},"
             message = message.strip(", ")
-            message = message + "\nAt {}".format(datetime)
-            print(message)
-            try:
-                send_photo(
-                    SEND_PHOTO_URL=SEND_PHOTO_URL,
-                    image_path=inferenced_img_path,
-                    image_caption=message,
-                    recipients=recipients,
-                )
-            except:
-                print("A telegram API connection occured. Retrying in 60s...")
-                time.sleep(120)
-                send_photo(
-                    SEND_PHOTO_URL=SEND_PHOTO_URL,
-                    image_path=inferenced_img_path,
-                    image_caption=message + "\nHad connectivity issues before sending",
-                    recipients=recipients,
-                )
-                pass
+            message = message + " at {}".format(datetime)
+            logging.info(message)
+
+            # Send message to recipients, retrying if there are any connectivity issues
+            sent = False
+            while not sent:
+                try:
+                    send_photo(
+                        SEND_PHOTO_URL=SEND_PHOTO_URL,
+                        image_path=inferenced_img_path,
+                        image_caption=message,
+                        recipients=recipients,
+                    )
+                    sent = True
+                except:
+                    logging.warning(
+                        "A telegram API connection occured. Retrying in 120s..."
+                    )
+                    time.sleep(120)
 
 
 # Infinite inference loop

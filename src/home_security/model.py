@@ -1,9 +1,10 @@
 from transformers import DetrImageProcessor, DetrForObjectDetection
 import time
+import logging
 
 
 def load_model():
-    print("Loading model...")
+    logging.info("Loading model...")
     start_time = time.time()
     processor = DetrImageProcessor.from_pretrained(
         "facebook/detr-resnet-50", revision="no_timm"
@@ -12,5 +13,5 @@ def load_model():
         "facebook/detr-resnet-50", revision="no_timm"
     )
     end_time = time.time()
-    print("Took {} seconds to load".format(end_time - start_time))
+    logging.info(f"Took {end_time - start_time} seconds to load")
     return model, processor
