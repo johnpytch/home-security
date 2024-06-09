@@ -1,4 +1,4 @@
-# AI Project for CCTV Home Security v0.1.0
+# AI Project for CCTV Home Security v0.1.0.
 
 <img src="./Home_Security.png" alt="HomeSecurity" width="75%" height="75%">
 
