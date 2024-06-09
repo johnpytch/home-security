@@ -6,6 +6,13 @@ import json
 from datetime import datetime
 import logging
 
+# Configure the logging settings
+logging.basicConfig(
+    level=logging.INFO,  # Set the logging level to INFO
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 # Get env json variables
 with open("./env.json", "r") as file:
     env_file = json.load(file)
@@ -39,10 +46,15 @@ def conEmail():
     con.login(user, password)
     return con
 
+# Set initial connection state
+con = None
 
-con = conEmail()
 while True:
     try:
+
+        # Reconnect only if the connection was lost previously
+        if not con:
+            con = conEmail()
         status, messages = con.select("Inbox")
         for i in range(1, int(messages[0].decode("utf-8")) + 1):
             res, message = con.fetch(str(i), "(RFC822)")
@@ -80,13 +92,15 @@ while True:
                             with open(path, "wb") as f:
                                 f.write(part.get_payload(decode=True))
 
-                            print("Saved image " + savefilename)
+                            logging.info(f"Saved image {savefilename}")
             con.store(str(i), "+FLAGS", "\\Deleted")
-        print("Sleeping for 30s")
+            time.sleep(5)
+        logging.info("No new images - sleeping for 30s")
         time.sleep(30)
+
     except Exception as e:
-        print(e)
-        print("Assumed network connectivity lost... Retrying in 60s")
+        logging.error(e)
+        logging.warning("Assumed network connectivity lost... Retrying in 60s")
+        con = None
         time.sleep(60)
-        con = conEmail()
         pass

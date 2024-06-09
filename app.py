@@ -71,10 +71,10 @@ def inference_images(image_paths: List[str], household: str):
 
         # Decide score thresh depending on hour of day
         # TODO: Use proper datetime type
-        if int(datetime[0:2]) >= 20 or int(datetime[0:2]) <= 6:
-            min_det_score = 0.45
+        if int(datetime[0:2]) >= 21 or int(datetime[0:2]) <= 6:
+            min_det_score = 0.60
         else:
-            min_det_score = 0.55
+            min_det_score = 0.70
 
         # Inference image
         image = Image.open(image_path)

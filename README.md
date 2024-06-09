@@ -1,4 +1,4 @@
-# AI Project for CCTV Home Security
+# AI Project for CCTV Home Security v0.1.0
 
 <img src="./Home_Security.png" alt="HomeSecurity" width="75%" height="75%">
 
@@ -7,16 +7,16 @@ My family and grandparents homes both use the same CCTV system, which can be pro
 
 The purpose of this project is to detect intruders in these images first. Only upon a detection does the system notify the relevant recipients of an intrusion, sharing the image of the intruder.
 
-I made this just after I finished uni, so the code itself is not yet at my best. I will be refactoring the code and making improvements when I can find the time :)
+I made this just after I finished uni, so the code itself is not yet at its best. I will be refactoring the code and making improvements a little at a time :)
 
 ## Tech Stack
 - Python Version 3.10.12
-- Tensorflow Object Detection API
+- Transformers
 
 ## Roadmap
-- Use poetry dependency manager
-- Finalise Containerisation.
-- Unit PyTests.
+- Use poetry dependency manager. ✅
+- Finalise Containerisation. ✅
+- Unit PyTests. ✅
 - Github Workflows.
 - Integrate Database.
 - Further fine-tuning on private dataset (in progress).
