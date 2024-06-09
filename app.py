@@ -62,7 +62,7 @@ model, processor = load_model()
 
 def inference_images(image_paths: List[str], household: str):
 
-    # Specify who is receiving the image if there is a detection
+    # Specify who is receiving the image if there is a detection.
     recipients = [
         USER_JOHN
     ]  # [USER_JOHN, USER_S] if household == DENN else [USER_JOHN, USER_A, USER_R]
