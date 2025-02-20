@@ -16,6 +16,9 @@ torch = "^2.2.2"
 accelerate = "^0.29.1"
 ipykernel = "^6.29.4"
 pytest = "^8.2.2"
+minio = "^7.2.7"
+sqlalchemy = "^2.0.31"
+psycopg2 = "^2.9.9"
 
 
 [build-system]

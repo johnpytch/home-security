@@ -46,6 +46,7 @@ def conEmail():
     con.login(user, password)
     return con
 
+
 # Set initial connection state
 con = None
 

@@ -27,11 +27,7 @@ def inference(model, processor, image, min_score):
         lab = model.config.id2label[label.item()]
         if lab in ["person"]:
             detections.append(
-                {
-                    "label": lab,
-                    "score": round(score.item(), 2),
-                    "box": box,
-                }
+                {"label": lab, "score": round(score.item(), 2), "box": box,}
             )
             logging.info(f"Detected {lab} with confidence {round(score.item(), 2)}")
     return detections
