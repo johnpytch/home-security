@@ -7,7 +7,8 @@ from sqlalchemy import (
     Uuid,
     SmallInteger,
     DECIMAL,
-    Text
+    Text,
+    Boolean
 )
 from sqlalchemy.orm import declarative_base
 
@@ -29,17 +30,18 @@ class Camera(Base):
     __tablename__ = "camera"
     id = Column(Text(), primary_key=True)
     household_id = Column(Integer(), ForeignKey("household.id"))
-    caption = Column(String(20), nullable=False)
+    caption = Column(String(20), nullable=True)
 
 
 class ImageSet(Base):
     __tablename__ = "imageset"
     id = Column(Integer(), primary_key=True)
-    recieved_date = Column(DateTime(timezone=True), nullable=False)
+    received_date = Column(DateTime(timezone=True), nullable=False)
     camera_id = Column(String(5), ForeignKey("camera.id"))
+    inferenced = Column(Boolean, nullable=False, default=False)
 
 
-class Image(Base):
+class IntrusionImage(Base):
     __tablename__ = "image"
     id = Column(Uuid(as_uuid=True), primary_key=True)
     imageset_id = Column(Integer(), ForeignKey("imageset.id"))

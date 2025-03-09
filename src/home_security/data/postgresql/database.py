@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import json
 from sqlalchemy.engine import URL
-from home_security.data.postgresql.models import Base
+from home_security.data.postgresql.models import Base, Household
 
 
 # Load env json
@@ -39,3 +39,9 @@ def get_session():
 
 def create_tables():
     Base.metadata.create_all(engine)
+
+def seed_db():
+    session = get_session()
+    households = [Household(name='denning'), Household(name='rectory')]
+    session.add_all(households)
+    session.commit()
