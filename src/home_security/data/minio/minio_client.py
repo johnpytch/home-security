@@ -3,7 +3,6 @@ from PIL import Image
 from io import BytesIO
 import minio
 
-
 class Minio:
     def __init__(self, endpoint: str, access_key: str, secret_key: str):
         """Create minio client object
