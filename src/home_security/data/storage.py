@@ -51,4 +51,4 @@ class StorageDriver:
         uninferenced_set_ids = self.session.query(ImageSet).with_entities(ImageSet.id).filter(ImageSet.inferenced == False).all()
         return [id[0] for id in uninferenced_set_ids]
     
-    def get_image_set(self, image_set_id: int) -> Tuple[List[Image.Image], ]
+    #def get_image_set(self, image_set_id: int) -> Tuple[List[Image.Image], ]
