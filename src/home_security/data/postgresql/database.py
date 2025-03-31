@@ -40,8 +40,9 @@ def get_session():
 def create_tables():
     Base.metadata.create_all(engine)
 
+
 def seed_db():
     session = get_session()
-    households = [Household(name='denning'), Household(name='rectory')]
+    households = [Household(name="denning"), Household(name="rectory")]
     session.add_all(households)
     session.commit()

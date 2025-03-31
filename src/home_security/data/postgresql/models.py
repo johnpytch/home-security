@@ -8,9 +8,10 @@ from sqlalchemy import (
     SmallInteger,
     DECIMAL,
     Text,
-    Boolean
+    Boolean,
 )
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import relationship, backref
 
 
 Base = declarative_base()
@@ -21,6 +22,7 @@ class Household(Base):
 
     id = Column(Integer(), primary_key=True)
     name = Column(String(10), unique=True, nullable=False)
+    cameras = relationship("Camera", backref="household")
 
     def __repr__(self):
         return f"<Household(id={self.id}, name={self.name})>"
@@ -31,6 +33,7 @@ class Camera(Base):
     id = Column(Text(), primary_key=True)
     household_id = Column(Integer(), ForeignKey("household.id"))
     caption = Column(String(20), nullable=True)
+    image_sets = relationship("ImageSet", backref="camera")
 
 
 class ImageSet(Base):
@@ -39,12 +42,14 @@ class ImageSet(Base):
     received_date = Column(DateTime(timezone=True), nullable=False)
     camera_id = Column(String(5), ForeignKey("camera.id"))
     inferenced = Column(Boolean, nullable=False, default=False)
+    intrusion_images = relationship("IntrusionImage", backref="imageset")
 
 
 class IntrusionImage(Base):
     __tablename__ = "image"
     id = Column(Uuid(as_uuid=True), primary_key=True)
     imageset_id = Column(Integer(), ForeignKey("imageset.id"))
+    detections = relationship("Detection", backref="image")
 
 
 class Detection(Base):
@@ -55,7 +60,7 @@ class Detection(Base):
         String(10), nullable=False
     )  # My labels won't be more than 10 characters - eg: 'person'
     confidence = Column(SmallInteger(), nullable=False)  # Can only be from 1 to 100
-    x_min = Column(DECIMAL(precision=2))  # EG: 135.23 ??
-    y_min = Column(DECIMAL(precision=2))  # EG: 135.26 ??
-    x_max = Column(DECIMAL(precision=2))  # EG: 135.36 ??
-    y_max = Column(DECIMAL(precision=2))  # EG: 135.26 ??
+    x_min = Column(DECIMAL(precision=5, scale=2))  # EG: 135.23 ??
+    y_min = Column(DECIMAL(precision=5, scale=2))  # EG: 135.26 ??
+    x_max = Column(DECIMAL(precision=5, scale=2))  # EG: 135.36 ??
+    y_max = Column(DECIMAL(precision=5, scale=2))  # EG: 135.26 ??
