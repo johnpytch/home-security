@@ -1,10 +1,22 @@
-import requests
 from typing import List
+from telegram import Bot, InputMediaPhoto
+from typing import List
+from home_security.settings import settings
+from PIL import Image
+from io import BytesIO
 
 
-def send_photo(SEND_PHOTO_URL, image_path, image_caption, recipients: List):
+async def send_photo(images: List[Image.Image], image_caption: str, recipients: List):
+    bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
     for recipient in recipients:
-        data = {"chat_id": recipient, "caption": image_caption}
-        with open(image_path, "rb") as img:
-            requests.post(SEND_PHOTO_URL, data=data, files={"photo": img})
+        img_bytes = []
+        for img in images:
+            bio = BytesIO()
+            img.save(bio, format="JPEG")
+            bio.seek(0)
+            img_bytes.append(InputMediaPhoto(media=bio))
+
+        await bot.send_media_group(
+            chat_id=recipient, media=img_bytes, caption=image_caption
+        )
     return True

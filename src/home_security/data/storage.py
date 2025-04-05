@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 from PIL import Image
 from datetime import datetime
 import uuid
@@ -19,6 +19,10 @@ class StorageDriver:
     def __init__(self, minio: Minio, session):
         self.minio = minio
         self.session = session
+
+    @property
+    def households(self):
+        return [house.name for house in self.session.query(Household).all()]
 
     def add_image_set(
         self, images: List[Image.Image], camera_id: str, datetime_str: str
@@ -67,9 +71,7 @@ class StorageDriver:
             self.minio.add_image(
                 image=image, image_uuid=str(image_uuid), bucket_name="intrusionimages"
             )
-            logger.info(
-                f"added image {image_value.id}, of set {image_value.imageset_id}"
-            )
+        logger.info(f"added image of set ID {image_value.imageset_id} to minio")
 
     def get_uninferenced_image_sets(self) -> List:
         uninferenced_set_ids = (

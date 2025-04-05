@@ -7,7 +7,7 @@ import minio
 class Minio:
     def __init__(self, endpoint: str, access_key: str, secret_key: str):
         """Create minio client object
-            
+
         Args:
             endpoint (str): The Minio container url
             access_key (str): The minio access key (username)
@@ -26,12 +26,12 @@ class Minio:
 
     def add_image(self, image: Image, bucket_name: str, image_uuid: str) -> None:
         """Adds an image to a Minio bucket
-        
+
         Args:
             image (PIL.Image): The image to upload.
             bucket_name (str): The name of the bucket, it not exists, one will be created.
             image_uuid (str): The unique identifier for the image. Should be a stringified uuid.uuid4()
-        
+
         Raises:
             Exception: Cannot add image to minio bucket.
         """
@@ -49,7 +49,6 @@ class Minio:
                 length=image_bytes.getbuffer().nbytes,
                 content_type="image/jpeg",
             )
-            self.logger.info(f"Added {image_uuid} to {bucket_name}")
 
         except Exception as e:
             raise Exception(
@@ -58,11 +57,11 @@ class Minio:
 
     def remove_image(self, image_uuid: str, bucket_name: str) -> None:
         """Removes an image from a Minio bucket. If the bucket does not exist, nothing happens.
-        
+
         Args:
             image_uuid (str): The unique identifier for the image. Should be a stringified uuid.uuid4().
             bucket_name (str): The name of the bucket, if not exists, one will be created.
-            
+
         Raises:
             Exception: Could not remove the object from the bucket.
         """
@@ -85,11 +84,11 @@ class Minio:
 
     def get_image(self, image_uuid: str, bucket_name: str) -> Image:
         """Gets an image from a Minio bucket.
-        
+
         Args:
             image_uuid: (str): The unique identifier for the image. Should be a stringified uuid.uuid4().
             bucket_name (str): The name of the bucket, if not exists, one will be created.
-        
+
         Raises:
             minio.S3Error: The bucket_name specified does not exist.
 
@@ -123,10 +122,10 @@ class Minio:
 
     def _bucket_exists(self, bucket_name: str) -> bool:
         """Checks if a bucket exists
-        
+
         Args:
             bucket_name (str): The Minio bucket name.
-        
+
         Returns:
             bool: True if bucket exists, else False.
         """
@@ -138,7 +137,7 @@ class Minio:
 
     def _create_bucket_if_not_exists(self, bucket_name: str) -> None:
         """Checks if a bucket exists - if it does not, a new one will be created
-        
+
         Args:
             bucket_name (str): The Minio bucket name.
         """

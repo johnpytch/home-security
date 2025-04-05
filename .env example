@@ -1,0 +1,27 @@
+TELEGRAM_BOT_TOKEN="Get one from telegram"
+USER_JOHN="telegram user id"
+USER_S="another telegram user id"
+USER_R="and another"
+USER_A="you get the picture"
+
+TELEGRAM_SEND_MESSAGE_URL="https://api.telegram.org/bot{TOKEN}/sendMessage"
+TELEGRAM_SEND_PHOTO_URL="https://api.telegram.org/bot{TOKEN}/sendPhoto"
+
+EMAIL_USER="email address thats sending images"
+EMAIL_PASSWORD="app password for said email address"
+IMAP="imap.gmail.com"
+REC_SENDER="Sender alias for household 2"
+DENN_SENDER='Sender alias for household 1'
+SENDER_ADDRESS="<sender address for address sending images@gmail.com>"
+
+POSTGRES_USER="homesecurity"
+POSTGRES_PASSWORD='yeahlikeimgonnacommitthat'
+POSTGRES_DB='homesecurity'
+# should be postgres in the same docker network
+POSTGRES_HOST='localhost'
+POSTGRES_PORT=5432
+
+MINIO_HOST="localhost"
+MINIO_PORT=9000
+MINIO_USER="homesecurity"
+MINIO_PASSWORD="oopsthisisactuallythepassword"

@@ -1,158 +1,146 @@
-import os
-from os import listdir
-import sys
 from PIL import Image
 from typing import List
 import time
 import logging
-import json
-from collections import Counter
-from src.home_security.telegram import send_photo
-from src.home_security.utils import get_datetime
-from src.home_security.inference import inference
+import asyncio
 
-from src.home_security.model import load_model
-from src.home_security.annotations import annotate_detections
+from home_security.telegram import send_photo
+from home_security.inference import inference
+from home_security.model import load_model
+from home_security.annotations import annotate_detections
+from home_security.settings import settings
+from home_security.data.minio.minio_client import Minio
+from home_security.data.storage import StorageDriver
+from home_security.data.postgresql.database import get_session, create_tables, seed_db
+from home_security.data.postgresql.models import Detection
 
-sys.path.append("..")
-# Configure the logging settings
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level to INFO
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+logging.basicConfig(level=logging.INFO)
+logging.info(f"Environment initialised")
+
+minio = Minio(
+    endpoint=f"{settings.MINIO_HOST}:{settings.MINIO_PORT}",
+    access_key=settings.MINIO_USER,
+    secret_key=settings.MINIO_PASSWORD,
 )
+session = get_session()
+create_tables()
+seed_db()
 
-# Load env json
-with open("./env.json", "r") as file:
-    env_json = json.load(file)
-
-env_tokens = env_json.get("TOKENS")
-env_households = env_json.get("HOUSEHOLDS")
-env_urls = env_json.get("URLS")
-
-# Get bot and user IDs for telegram
-BOT_TOKEN = env_tokens.get("BOT_TOKEN")
-USER_JOHN = env_tokens.get("USER_JOHN")
-USER_S = env_tokens.get("USER_S")
-USER_R = env_tokens.get("USER_R")
-USER_A = env_tokens.get("USER_A")
-
-
-# Base household foldernames for image directories
-DENN = env_households.get("DENN")
-REC = env_households.get("REC")
-
-# Full housefold folder paths for image directories
-NEW_IMAGES_DENN = f"./images/new_images/{DENN}/"
-NEW_IMAGES_REC = f"./images/new_images/{REC}/"
-OLD_IMAGES_DENN = f"./images/old_images/{DENN}/"
-OLD_IMAGES_REC = f"./images/old_images/{REC}/"
-INFERENCED_IMAGES_DENN = f"./images//inferenced/{DENN}/"
-INFERENCED_IMAGES_REC = f"./images/inferenced/{REC}/"
-
-# URLs for telegram bot posts
-SEND_MSG_URL = env_urls.get("SEND_MSG_URL").format(TOKEN=BOT_TOKEN)
-SEND_PHOTO_URL = env_urls.get("SEND_PHOTO_URL").format(TOKEN=BOT_TOKEN)
-
-logging.info(f"Environment initialised for {DENN} and {REC}")
+storage_driver = StorageDriver(minio=minio, session=session)
 
 # initialise model
 model, processor = load_model()
 
 
-def inference_images(image_paths: List[str], household: str):
+def inference_images(image_set):
+    household = image_set.camera.household.name
+    dets_to_register = []
+    annotated_images = []
 
-    # Specify who is receiving the image if there is a detection.
-    recipients = [
-        USER_JOHN
-    ]  # [USER_JOHN, USER_S] if household == DENN else [USER_JOHN, USER_A, USER_R]
-    for image_path in image_paths:
-        datetime = get_datetime(image_path=image_path)
-
+    images = storage_driver.get_images_from_set(image_set)
+    recieved_hour = image_set.received_date.hour
+    for idx, image in enumerate(images):
         # Decide score thresh depending on hour of day
-        # TODO: Use proper datetime type
-        if int(datetime[0:2]) >= 21 or int(datetime[0:2]) <= 6:
+        if recieved_hour >= 21 or recieved_hour <= 6:
             min_det_score = 0.60
         else:
             min_det_score = 0.70
-
-        # Inference image
-        image = Image.open(image_path)
-        start_time = time.time()
         detections = inference(
             model=model, processor=processor, image=image, min_score=min_det_score
         )
-        end_time = time.time()
+        for det in detections:
+            dets_to_register.append(
+                Detection(
+                    image_id=image_set.intrusion_images[idx].id,
+                    label=det["label"],
+                    confidence=det["score"],
+                    x_min=det["box"][0],
+                    y_min=det["box"][1],
+                    x_max=det["box"][2],
+                    y_max=det["box"][3],
+                )
+            )
 
         # Annotate image
-        annotated_image = annotate_detections(image=image, detections=detections)
-
-        # Save inferenced image in respective inferenced folder
-        inferenced_img_path = (
-            INFERENCED_IMAGES_DENN if household == DENN else INFERENCED_IMAGES_REC
-        )
-        inferenced_img_path += image_path.split("/")[4]
-        annotated_image.save(inferenced_img_path)
-
-        # Save original image in respective old_images folder
-        old_img_path = OLD_IMAGES_DENN if household == DENN else OLD_IMAGES_REC
-        old_img_path += image_path.split("/")[4]
-        image.save(old_img_path)  # save old image to new location
-        os.remove(image_path)  # remove image from new images dir
-
-        logging.info(
-            f"Inferenced image_path {image_path} using score thresh {min_det_score} in {end_time - start_time}"
-        )
-
-        # Do something with detection
         if detections:
-            message = "Detected "
+            annotated_images.append(
+                annotate_detections(image=image, detections=detections)
+            )
 
-            # Get dict of the counts of unique items in the images detections
-            unique_dets = {}
-            for det in detections:
-                if det["label"] not in unique_dets:
-                    unique_dets[det["label"]] = 1
-                else:
-                    unique_dets[det["label"]] += 1
+    logging.info(f"Inferenced images from {household} at {image_set.camera.caption}")
+    return annotated_images, dets_to_register
 
-            # Add detections to a message
-            item_counts = dict(Counter(unique_dets))
-            for key, value in item_counts.items():
-                if value > 1:
-                    class_name = "people"
-                else:
-                    class_name = key
-                message = message + f"{value} {class_name},"
-            message = message.strip(", ")
-            message = message + " at {}".format(datetime)
-            logging.info(message)
 
-            # Send message to recipients, retrying if there are any connectivity issues
-            sent = False
-            while not sent:
-                try:
-                    send_photo(
-                        SEND_PHOTO_URL=SEND_PHOTO_URL,
-                        image_path=inferenced_img_path,
-                        image_caption=message,
-                        recipients=recipients,
-                    )
-                    sent = True
-                except:
-                    logging.warning(
-                        "A telegram API connection occured. Retrying in 120s..."
-                    )
-                    time.sleep(120)
+def send_intrusion_message(
+    max_detections: int,
+    annotated_images: List[Image.Image],
+    recipients: List[int],
+    pretty_date: str,
+    camera_location: str,
+):
+
+    # Do something with detection
+    message = "Detected up to "
+    if max_detections > 1:
+        class_name = "people"
+    else:
+        class_name = "person"
+    message = message + f"{max_detections} {class_name} at {camera_location}"
+    message = message + f"\n{pretty_date}"
+
+    logging.info(message)
+
+    # Send message to recipients, retrying if there are any connectivity issues
+    sent = False
+    while not sent:
+        try:
+            asyncio.run(
+                send_photo(
+                    images=annotated_images,
+                    image_caption=message,
+                    recipients=recipients,
+                )
+            )
+            sent = True
+        except Exception as e:
+            logging.warning(
+                f"A telegram API connection occured:\n{e}\nRetrying in 120s..."
+            )
+            time.sleep(120)
 
 
 # Infinite inference loop
 while True:
 
-    image_paths_denning = [NEW_IMAGES_DENN + file for file in listdir(NEW_IMAGES_DENN)]
-    image_paths_rectory = [NEW_IMAGES_REC + file for file in listdir(NEW_IMAGES_REC)]
-    if image_paths_denning:
-        inference_images(image_paths=image_paths_denning, household=DENN)
-    if image_paths_rectory:
-        inference_images(image_paths=image_paths_rectory, household=REC)
-    time.sleep(30)
+    image_sets = storage_driver.get_uninferenced_image_sets()
+    for image_set in image_sets:
+        annotated_images, dets_to_register = inference_images(image_set=image_set)
+
+        # Figure out the maximum number of people detected in any one image
+        image_dets = {}
+        for det in dets_to_register:
+            if str(det.image_id) not in image_dets:
+                image_dets[str(det.image_id)] = 0
+            image_dets[str(det.image_id)] += 1
+        max_detections = max(image_dets.values()) if dets_to_register else 0
+
+        if len(dets_to_register) > 0:
+            # Specify who is receiving a message if there is a detection.
+            recipients = [
+                settings.USER_JOHN
+            ]  # [settings.USER_JOHN, settings.USER_S] if household == 'denning' else [settings.USER_A, settings.USER_R]
+            send_intrusion_message(
+                max_detections=max_detections,
+                annotated_images=annotated_images,
+                recipients=recipients,
+                pretty_date=image_set.pretty_date,
+                camera_location=image_set.camera.caption,
+            )
+
+        # Commit finalised detections to DB and update image set inferenced state
+        session.add_all(dets_to_register)
+        session.commit()
+        image_set.inferenced = True
+
+    # zzzz
+    time.sleep(10)

@@ -1,5 +1,4 @@
 import torch
-import logging
 from typing import List, Dict, Tuple
 
 
@@ -34,5 +33,4 @@ def inference(model, processor, image, min_score) -> List[Dict[str, Tuple[str, f
                     "box": box,
                 }
             )
-            logging.info(f"Detected {lab} with confidence {round(score.item(), 2)}")
     return detections

@@ -11,7 +11,7 @@ from sqlalchemy import (
     Boolean,
 )
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship
 
 
 Base = declarative_base()
@@ -43,6 +43,23 @@ class ImageSet(Base):
     camera_id = Column(String(5), ForeignKey("camera.id"))
     inferenced = Column(Boolean, nullable=False, default=False)
     intrusion_images = relationship("IntrusionImage", backref="imageset")
+
+    @property
+    def pretty_date(self) -> str:
+        day = self.received_date.day
+        if 11 <= day <= 13:
+            ordinal = "th"
+        else:
+            last_digit = day % 10
+            if last_digit == 1:
+                ordinal = "st"
+            elif last_digit == 2:
+                ordinal = "nd"
+            elif last_digit == 3:
+                ordinal = "rd"
+            else:
+                ordinal = "th"
+        return self.received_date.strftime(format=f"At %H:%M on %A %d{ordinal} %B, %Y")
 
 
 class IntrusionImage(Base):
