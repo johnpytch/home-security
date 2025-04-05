@@ -126,9 +126,11 @@ while True:
 
         if len(dets_to_register) > 0:
             # Specify who is receiving a message if there is a detection.
-            recipients = [
-                settings.USER_JOHN
-            ]  # [settings.USER_JOHN, settings.USER_S] if household == 'denning' else [settings.USER_A, settings.USER_R]
+            recipients = (
+                [settings.USER_JOHN, settings.USER_S]
+                if image_set.camera.household.name == "denning"
+                else [settings.USER_A, settings.USER_R]
+            )
             send_intrusion_message(
                 max_detections=max_detections,
                 annotated_images=annotated_images,
