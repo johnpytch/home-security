@@ -1,8 +1,8 @@
 import torch
-import logging
+from typing import List, Dict, Tuple
 
 
-def inference(model, processor, image, min_score):
+def inference(model, processor, image, min_score) -> List[Dict[str, Tuple[str, float]]]:
 
     # Process the image and convert into a tensor
     inputs = processor(images=image, return_tensors="pt")
@@ -33,5 +33,4 @@ def inference(model, processor, image, min_score):
                     "box": box,
                 }
             )
-            logging.info(f"Detected {lab} with confidence {round(score.item(), 2)}")
     return detections

@@ -1,6 +1,7 @@
-env.json
+.env
 images/inferenced/*
 images/new_images/*
 images/old_images/*
 __pycache__
 models/*
+dev_images/*

@@ -1,36 +1,32 @@
 import imaplib
 import email
-import os
 import time
-import json
 from datetime import datetime
 import logging
+from PIL import Image
+from io import BytesIO
 
-# Configure the logging settings
-logging.basicConfig(
-    level=logging.INFO,  # Set the logging level to INFO
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+from home_security.data.postgresql.database import get_session, create_tables, seed_db
+from home_security.data.storage import StorageDriver
+from home_security.data.minio.minio_client import Minio
+from home_security.settings import settings
+
+logging.basicConfig(level=logging.INFO)
+logging.info(f"Environment initialised")
+
+minio = Minio(
+    endpoint=f"{settings.MINIO_HOST}:{settings.MINIO_PORT}",
+    access_key=settings.MINIO_USER,
+    secret_key=settings.MINIO_PASSWORD,
 )
+session = get_session()
+create_tables()
+seed_db()
 
-# Get env json variables
-with open("./env.json", "r") as file:
-    env_file = json.load(file)
-env_email = env_file.get("EMAIL")
-env_households = env_file.get("HOUSEHOLDS")
+storage_driver = StorageDriver(minio=minio, session=session)
 
-DENN = env_households.get("DENN")
-REC = env_households.get("REC")
-
-user = env_email.get("USER")
-password = env_email.get("PASSWORD")
-imap_url = env_email.get("IMAP")
-REC_SENDER = env_email.get("REC_SENDER")
-DENN_SENDER = env_email.get("DENN_SENDER")
-SENDER_ADDRESS = env_email.get("SENDER_ADDRESS")
-
-rec_sender = f'"{REC_SENDER}" {SENDER_ADDRESS}'
-denn_sender = f'"{DENN_SENDER}" {SENDER_ADDRESS}'
+rec_sender = f'"{settings.REC_SENDER}" {settings.SENDER_ADDRESS}'
+denn_sender = f'"{settings.DENN_SENDER}" {settings.SENDER_ADDRESS}'
 
 
 def getEmails(result_bytes):
@@ -42,17 +38,19 @@ def getEmails(result_bytes):
 
 
 def conEmail():
-    con = imaplib.IMAP4_SSL(imap_url)
-    con.login(user, password)
+    con = imaplib.IMAP4_SSL(settings.IMAP)
+    con.login(settings.EMAIL_USER, settings.EMAIL_PASSWORD)
     return con
+
 
 # Set initial connection state
 con = None
 
+# Forevahhh
 while True:
     try:
 
-        # Reconnect only if the connection was lost previously
+        # Reconnect if the connection was lost previously
         if not con:
             con = conEmail()
         status, messages = con.select("Inbox")
@@ -61,41 +59,40 @@ while True:
             m = email.message_from_string(message[0][1].decode("utf-8"))
             sender = m.get("From")
 
-            # Which household is it coming from?
-            if sender == rec_sender:
-                household = REC
-            elif sender == denn_sender:
-                household = DENN
+            # Exclude unrecognised senders
+            if sender not in [rec_sender, denn_sender]:
+                con.store(str(i), "+FLAGS", "\\Deleted")
+                logging.info(f"Deleted unrecognised email from {sender}")
 
-            # Only process the email if the sender is recognised as rectory or denning
-            if sender in [rec_sender, denn_sender]:
+            # Go through the email and extract images
+            images = []
+            for part in m.walk():
+                if part["Content-type"] == "text/plain; charset=UTF-8":
+                    body = part.get_payload()
+                    date_time = body.split("\n")[3].split(" ")[5].split("\r")[0]
 
-                # Go through the email and extract images
-                for part in m.walk():
-                    if part["Content-type"] == "text/plain; charset=UTF-8":
-                        body = part.get_payload()
-                        date_time = body.split("\n")[3].split(" ")[5].split("\r")[0]
+                    # Clean up the datetime from the email and make it look like YYYYMMDDHHMMSS
+                    date_time = datetime.strptime(
+                        date_time, "%Y-%m-%d,%H:%M:%S"
+                    ).strftime("%Y%m%d%H%M%S")
 
-                        # Clean up the datetime from the email and make it look like YYYYMMDDHHMMSS
-                        date_time = datetime.strptime(
-                            date_time, "%Y-%m-%d,%H:%M:%S"
-                        ).strftime("%Y%m%d%H%M%S")
+                # if theres images there will be a filename
+                filename = part.get_filename()
+                if filename is not None:
+                    camera_id = filename.split("-")[0]
 
-                    filename = part.get_filename()
-                    if filename is not None:
+                    # Get the image
+                    image_bytes = part.get_payload(decode=True)
+                    images.append(Image.open(BytesIO(image_bytes)))
 
-                        savefilename = filename.split(".")[0] + "_" + date_time + ".jpg"
-                        path = f"./images/new_images/{household}/" + savefilename
+            # Add images to postgres
+            if images:
+                storage_driver.add_image_set(
+                    images=images, camera_id=camera_id, datetime_str=str(date_time)
+                )
 
-                        if not os.path.isfile(path):
-                            # Save the image
-                            with open(path, "wb") as f:
-                                f.write(part.get_payload(decode=True))
-
-                            logging.info(f"Saved image {savefilename}")
+            # Delete the email
             con.store(str(i), "+FLAGS", "\\Deleted")
-            time.sleep(5)
-        logging.info("No new images - sleeping for 30s")
         time.sleep(30)
 
     except Exception as e:
@@ -103,4 +100,3 @@ while True:
         logging.warning("Assumed network connectivity lost... Retrying in 60s")
         con = None
         time.sleep(60)
-        pass
