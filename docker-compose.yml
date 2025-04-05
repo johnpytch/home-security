@@ -1,16 +1,14 @@
 version: '3.8'
 
 services:
-  # home-security:
-  #   restart: always
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: home-security
-  #   working_dir: /homesecurity
-  #   volumes:
-  #     - ../images:/homesecurity/images
-  #   command: bash ./start.sh
+  home-security:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: home-security
+    working_dir: /homesecurity
+    command: bash ./start.sh
 
   postgres:
     image: postgres:12
@@ -31,8 +29,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"

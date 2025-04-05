@@ -93,7 +93,6 @@ while True:
 
             # Delete the email
             con.store(str(i), "+FLAGS", "\\Deleted")
-        logging.info("No new images - sleeping for 30s")
         time.sleep(30)
 
     except Exception as e:
